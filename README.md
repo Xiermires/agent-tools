@@ -14,20 +14,19 @@ It provides 10 methods :
 
 (local version) -> Works on the local JVM.
 
-load (ClassFileTransformer ctf) -> loads a ClassFileTransformer
-
-remove (ClassFileTransformer ctf) -> removes a ClassFileTransformer
-reset (String... classNames) -> loads the original version of the class (w/o any bytecode modifications)
-retransform (ClassFileTransformer ctf, String... classNames) -> retransforms the classes using ctf
-redefine(String... classNames) -> redefines the classes using the currently loaded ctfs.
+* load (ClassFileTransformer ctf) -> loads a ClassFileTransformer
+* remove (ClassFileTransformer ctf) -> removes a ClassFileTransformer
+* reset (String... classNames) -> loads the original version of the class (w/o any bytecode modifications)
+* retransform (ClassFileTransformer ctf, String... classNames) -> retransforms the classes using ctf
+* redefine(String... classNames) -> redefines the classes using the currently loaded ctfs
 
 (remote version) -> Same as local, but working on a remote JVM. 
 
-load (ClassFileTransformer ctf, int pid) -> loads a ClassFileTransformer
-remove (ClassFileTransformer ctf, int pid) -> removes a ClassFileTransformer
-reset (int pid, String... classNames) -> loads the original version of the class (w/o any bytecode modifications)
-retransform (int pid, ClassFileTransformer ctf, String... classNames) -> retransforms the classes using ctf
-redefine(int pid, String... classNames) -> redefines the classes using the currently loaded ctfs.
+* load (ClassFileTransformer ctf, int pid) -> see above
+* remove (ClassFileTransformer ctf, int pid) -> see above
+* reset (int pid, String... classNames) -> see above
+* retransform (int pid, ClassFileTransformer see above
+* redefine(int pid, String... classNames) -> see above
 
 ---------
 Specifics 
