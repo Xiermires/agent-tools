@@ -38,6 +38,9 @@ import com.sun.tools.attach.VirtualMachine;
 
 public class AgentTools
 {
+    static final String REMOTE = "remote";
+    static final String LOCAL = "local";
+    
     private static Instrumentor theInstrumentor = null;
 
     private AgentTools()
@@ -172,7 +175,7 @@ public class AgentTools
         try
         {
             vm = VirtualMachine.attach(getPid());
-            vm.loadAgent(AgentBootstrap.createBootstrapJar().getAbsolutePath());
+            vm.loadAgent(AgentBootstrap.createBootstrapJar().getAbsolutePath(), LOCAL);
         }
         catch (AttachNotSupportedException | IOException | AgentLoadException | AgentInitializationException e)
         {
@@ -191,7 +194,7 @@ public class AgentTools
         try
         {
             vm = VirtualMachine.attach(String.valueOf(pid));
-            vm.loadAgent(AgentBootstrap.createRemoteBootstrapJar().getAbsolutePath());
+            vm.loadAgent(AgentBootstrap.createRemoteBootstrapJar().getAbsolutePath(), REMOTE);
         }
         catch (AttachNotSupportedException | IOException | AgentLoadException | AgentInitializationException | URISyntaxException | ClassNotFoundException e)
         {

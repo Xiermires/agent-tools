@@ -47,8 +47,11 @@ public class AgentBootstrap
     public static void agentmain(String agentArguments, Instrumentation instrumentation) throws Exception
     {
         final Instrumentor instr = new Instrumentor(instrumentation);
+        if (AgentTools.REMOTE.equals(agentArguments))
+        {
+            startMBean(instr);
+        }
         AgentTools.initialize(instr);
-        startMBean(instr);
     }
 
     private static void startMBean(Instrumentor instr)
