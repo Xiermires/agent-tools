@@ -15,6 +15,7 @@ It provides 10 methods :
 (local version) -> Works on the local JVM.
 
 load (ClassFileTransformer ctf) -> loads a ClassFileTransformer
+
 remove (ClassFileTransformer ctf) -> removes a ClassFileTransformer
 reset (String... classNames) -> loads the original version of the class (w/o any bytecode modifications)
 retransform (ClassFileTransformer ctf, String... classNames) -> retransforms the classes using ctf
