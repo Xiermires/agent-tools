@@ -41,5 +41,5 @@ Remote :
 
 AgentTools creates a .jar with the required classes and loads into the alien VM. 
 Inside the alien VM, the agent.jar creates a MBean which facades the functionality.
-Back in the initial VM, any request to the remote methods, opens a JMX connection with the alien VM and communicates with the MBean.
+Back in the initial VM, we JMX proxy the MBean to access the functionality.
 
