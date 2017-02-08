@@ -13,15 +13,9 @@ public class Main
 {
     public static void main(String... args)
     {
-        new Loop(() ->
-        {
-            new Cat().meow();
-        }).start();
+        new Loop(() -> new Cat().meow()).start();
 
-        new Loop(() ->
-        {
-            new Dog().bark();
-        }).start();
+        new Loop(() -> new Dog().bark()).start();
 
         new Loop(() ->
         {
