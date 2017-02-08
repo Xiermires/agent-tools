@@ -15,9 +15,9 @@
  *******************************************************************************/
 package org.agenttools;
 
-public class Cat 
+class Cat 
 {
-    void meow() throws InterruptedException
+    void meow() 
     {
     }
 }

@@ -15,11 +15,19 @@
  *******************************************************************************/
 package org.agenttools;
 
+import java.io.File;
 import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
-import java.util.ArrayList;
-import java.util.List;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class Instrumentor implements InstrumentorMBean
 {
@@ -51,19 +59,14 @@ public class Instrumentor implements InstrumentorMBean
     @Override
     public void retransform(ClassFileTransformer transformer, String... classNames)
     {
-        instrumentation.addTransformer(transformer, true);
+        instrumentation.addTransformer(new FilteredClassFileTransformer(transformer, in(classNames)), true);
         try
         {
-            final List<Class<?>> cs = new ArrayList<Class<?>>();
-            for (String s : classNames)
-            {
-                cs.add(Class.forName(s));
-            }
-            instrumentation.retransformClasses(cs.toArray(new Class[cs.size()]));
+            instrumentation.retransformClasses(ClassTools.getClass(classNames).toArray(new Class[0]));
         }
         catch (Exception e)
         {
-            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be transformed { %s }.", classNames.toString()), e);
+            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be transformed { %s }.", Arrays.asList(classNames).toString()), e);
         }
         finally
         {
@@ -76,16 +79,47 @@ public class Instrumentor implements InstrumentorMBean
     {
         try
         {
-            final List<ClassDefinition> cds = new ArrayList<ClassDefinition>();
-            for (String c : classNames)
-            {
-                cds.add(new ClassDefinition(Class.forName(c), ClassTools.getClassBytes(c)));
-            }
-            instrumentation.redefineClasses(cds.toArray(new ClassDefinition[cds.size()]));
+            instrumentation.redefineClasses(ClassTools.getClassDefinition(classNames).toArray(new ClassDefinition[0]));
         }
         catch (Exception e)
         {
-            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be redefined { %s }.", classNames.toString()), e);
+            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be redefined { %s }.", Arrays.asList(classNames).toString()), e);
         }
+    }
+
+    @Override
+    public void loadJar(String jarName, byte[] jarBytes)
+    {
+        if (jarName != null && jarBytes != null)
+        {
+            File tmp = null;
+            try
+            {
+                tmp = File.createTempFile(jarName, ".jar");
+                Files.write(Paths.get(tmp.toURI()), jarBytes);
+
+                // hack the SystemClassLoader into an URLClassLoader we can load stuff with.
+                final URL url = tmp.toURI().toURL();
+                final URLClassLoader classLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+                final Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
+                method.setAccessible(true);
+                method.invoke(classLoader, url);
+                method.setAccessible(false);
+            }
+            catch (Exception e)
+            {
+                throw new AgentLoadingException(String.format("Unable to load the provided jar { %s }.", jarName.concat(".jar")), e);
+            }
+            finally
+            {
+                tmp.deleteOnExit();
+            }
+        }
+    }
+
+    private Predicate<String> in(String[] classNames)
+    {
+        final Set<String> set = Arrays.asList(classNames).stream().map(x -> x.replace('.', '/')).collect(Collectors.toSet());
+        return cn -> set.contains(cn);
     }
 }

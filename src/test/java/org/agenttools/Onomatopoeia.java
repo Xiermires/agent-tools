@@ -16,10 +16,14 @@
 package org.agenttools;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import javassist.CannotCompileException;
 import javassist.ClassPool;
@@ -27,20 +31,24 @@ import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.NotFoundException;
 
-public class Onomatopoeia implements ClassFileTransformer
+class Onomatopoeia implements ClassFileTransformer, Serializable
 {
-    private final String sound;
+    private static final long serialVersionUID = 1L;
 
-    Onomatopoeia(String sound)
+    private final String sound;
+    private final String[] acceptTheseOnly;
+
+    Onomatopoeia(String sound, String... acceptTheseOnly)
     {
         this.sound = sound;
+        this.acceptTheseOnly = acceptTheseOnly;
     }
 
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer)
             throws IllegalClassFormatException
     {
-        if (Objects.nonNull(className) && ("org/agenttools/cat".equals(className.toLowerCase()) || "org/agenttools/dog".equals(className.toLowerCase())))
+        if (Objects.nonNull(className) && accept(className))
         {
             CtClass clazz = null;
             try
@@ -85,5 +93,24 @@ public class Onomatopoeia implements ClassFileTransformer
                 System.err.println(e.getMessage());
             }
         }
+    }
+    
+    // Using a predicate parameter throws serialization errors due to the owner of the anonymous class.
+    // Use a lazy initialization approach to filter.
+    
+    /*private Predicate<String> remoteClasses()
+    {
+        return (Predicate<String> & Serializable) cn -> "org/testremote/Cat".equals(cn) || "org/testremote/Dog".equals(cn);
+    }*/
+    
+    private Set<String> set = null;
+    
+    private boolean accept(String className)
+    {
+        if (set == null)
+        {
+            set = new HashSet<>(Arrays.asList(acceptTheseOnly));
+        }
+        return set.contains(className);
     }
 }

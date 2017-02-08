@@ -16,22 +16,83 @@
 package org.agenttools;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.instrument.ClassDefinition;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.jar.JarFile;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
 
-class ClassTools
+public class ClassTools
 {
+    public static File createTemporaryJar(String jarName, Manifest manifest, String... classNames) throws IOException, URISyntaxException, ClassNotFoundException
+    {
+        final File tmpJar = File.createTempFile(jarName, ".jar");
+
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(tmpJar)))
+        {
+            if (manifest != null)
+            {
+                final ZipEntry ze = new ZipEntry(JarFile.MANIFEST_NAME);
+                jos.putNextEntry(ze);
+                manifest.write(jos);
+                jos.closeEntry();
+            }
+
+            if (classNames.length > 0)
+            {
+                appendToJarStream(jos, getClassDefinition(classNames));
+            }
+
+            return tmpJar;
+        }
+    }
+
+    static List<ClassDefinition> getClassDefinition(String... classNames) throws ClassNotFoundException, IOException, URISyntaxException
+    {
+        final List<ClassDefinition> cds = new ArrayList<ClassDefinition>();
+        for (String c : classNames)
+        {
+            cds.add(new ClassDefinition(Class.forName(c), ClassTools.getClassBytes(c)));
+        }
+        return cds;
+    }
+
+    static List<Class<?>> getClass(String... classNames) throws ClassNotFoundException
+    {
+        final List<Class<?>> cs = new ArrayList<Class<?>>();
+        for (String s : classNames)
+        {
+            cs.add(Class.forName(s));
+        }
+        return cs;
+    }
+
+    static void appendToJarStream(JarOutputStream jos, List<ClassDefinition> cds) throws IOException
+    {
+        for (ClassDefinition cd : cds)
+        {
+            final ZipEntry z = new ZipEntry(cd.getDefinitionClass().getName().replace('.', '/').concat(".class"));
+            jos.putNextEntry(z);
+            jos.write(cd.getDefinitionClassFile());
+            jos.closeEntry();
+        }
+    }
+
     static List<ClassDefinition> getPckgClassBytes(URI pckg, String pckgName) throws IOException, URISyntaxException, ClassNotFoundException
     {
         final List<ClassDefinition> result = new ArrayList<ClassDefinition>();
@@ -48,30 +109,11 @@ class ClassTools
     {
         return Files.readAllBytes(getPath(className));
     }
-    
-    static Path getPath(Package pckg) throws URISyntaxException
-    {
-        final String path = "/".concat(pckg.getName().replace('.', '/'));
-        final URL url = ClassTools.class.getResource(path);
-        return Paths.get(url.toURI());
-    }
-    
-    static URI getClassURI(String className) throws URISyntaxException
-    {
-        return ClassTools.class.getResource("/".concat(className).replace('.', '/').concat(".class")).toURI();
-    };
 
-    // This method is a workaround due to 'user.dir' while running from tests fixated there. 
-    // Hence reading the package contents, reads the tests files.
-    // We force the package of the target files by using a target class URI as pattern.
-    static URI getPckgURIFromClassURI(URI classUri)
+    public static File findJarOf(Class<?> clazz) throws UnsupportedEncodingException
     {
-        final Matcher matcher = CLASS_NAME.matcher(classUri.getPath());
-        while (matcher.find())
-        {
-            return new File(matcher.group(1)).toURI(); // FIXME : jars.
-        }
-        throw new AgentLoadingException(String.format("Unable to get package uri from path :'%s'", classUri.getPath()));
+        final String path = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
+        return new File(URLDecoder.decode(path, "UTF-8"));
     }
     
     private static Path getPath(String className) throws URISyntaxException
@@ -80,18 +122,15 @@ class ClassTools
         final URL url = ClassTools.class.getResource(path);
         return Paths.get(url.toURI());
     }
-    
+
     // This should work for folder / jar / different os (TODO: test).
     private static final Pattern CLASS_NAME = Pattern.compile("(.+)\\/(.*)\\.class");
-    
+
     private static String getClassName(Path p)
     {
         final String path = p.toUri().getPath(); // '/' separator
         final Matcher matcher = CLASS_NAME.matcher(path);
-        if (matcher.matches())
-        {
-            return matcher.group(2);
-        }
+        if (matcher.matches()) { return matcher.group(2); }
         throw new AgentLoadingException(String.format("Unable to get class name from path :'%s'", path));
     }
 }

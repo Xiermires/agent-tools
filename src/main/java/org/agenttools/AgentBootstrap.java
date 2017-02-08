@@ -16,19 +16,13 @@
 package org.agenttools;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.jar.Attributes;
 import java.util.jar.Attributes.Name;
-import java.util.jar.JarFile;
-import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.zip.ZipEntry;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
@@ -68,54 +62,38 @@ public class AgentBootstrap
         }
     }
 
-    static File createBootstrapJar() throws IOException
+    static File createBootstrapJar() throws IOException, ClassNotFoundException, URISyntaxException
     {
-        final File bootstrapJar = File.createTempFile("bootsrap", ".jar");
+        final File bootstrapJar = ClassTools.createTemporaryJar("bootsrap", createManifest());
         bootstrapJar.deleteOnExit();
-
-        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(bootstrapJar)))
-        {
-            final ZipEntry ze = new ZipEntry(JarFile.MANIFEST_NAME);
-            jos.putNextEntry(ze);
-            createManifest().write(jos);
-            jos.closeEntry();
-
-            return bootstrapJar;
-        }
+        return bootstrapJar;
     }
 
     static File createRemoteBootstrapJar() throws IOException, URISyntaxException, ClassNotFoundException
     {
-        final File bootstrapJar = File.createTempFile("bootsrap", ".jar");
+        final String[] jarClasses = new String[] { //
+                AgentBootstrap.class.getName(), //
+                AgentLoadingException.class.getName(), //
+                AgentTools.class.getName(), //
+                ClassTools.class.getName(), //
+                FilteredClassFileTransformer.class.getName(), //
+                Instrumentor.class.getName(), //
+                InstrumentorMBean.class.getName(),
+                JMXUtils.class.getName(),
+                ResetChangesTransformer.class.getName()
+        };
+        
+        final File bootstrapJar = ClassTools.createTemporaryJar("bootsrap", createManifest(), jarClasses);
         bootstrapJar.deleteOnExit();
-
-        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(bootstrapJar)))
-        {
-            final ZipEntry ze = new ZipEntry(JarFile.MANIFEST_NAME);
-            jos.putNextEntry(ze);
-            createManifest().write(jos);
-            jos.closeEntry();
-
-            final String pckgName = AgentBootstrap.class.getPackage().getName();
-            final URI classUri = ClassTools.getClassURI(AgentBootstrap.class.getName());
-            final URI pckgUri = ClassTools.getPckgURIFromClassURI(classUri);
-            for (ClassDefinition cd : ClassTools.getPckgClassBytes(pckgUri, pckgName))
-            {
-                final ZipEntry z = new ZipEntry(cd.getDefinitionClass().getName().replace('.', '/'));
-                jos.putNextEntry(z);
-                jos.write(cd.getDefinitionClassFile());
-                jos.closeEntry();
-            }
-
-            return bootstrapJar;
-        }
+        return bootstrapJar;
     }
-
+    
     private static Manifest createManifest()
     {
         final Manifest m = new Manifest();
 
         m.getMainAttributes().putIfAbsent(Attributes.Name.MANIFEST_VERSION, "1.0");
+        m.getMainAttributes().putIfAbsent(new Name("Premain-Class"), AgentBootstrap.class.getName()); // test only, not needed but doesn't hurt
         m.getMainAttributes().putIfAbsent(new Name("Agent-Class"), AgentBootstrap.class.getName());
         m.getMainAttributes().putIfAbsent(new Name("Can-Redefine-Classes"), Boolean.TRUE.toString());
         m.getMainAttributes().putIfAbsent(new Name("Can-Retransform-Classes"), Boolean.TRUE.toString());

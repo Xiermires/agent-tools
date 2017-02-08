@@ -18,13 +18,12 @@ package org.agenttools;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 class ResetChangesTransformer implements ClassFileTransformer
 {
-    private static final Logger log = LoggerFactory.getLogger(ResetChangesTransformer.class);
+    private static final Logger log = Logger.getLogger(ResetChangesTransformer.class.getName());
 
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer)
@@ -37,7 +36,7 @@ class ResetChangesTransformer implements ClassFileTransformer
         }
         catch (Throwable e)
         {
-            log.debug("Unable to revert instrumented changes in the class '%s'.", className, e);
+            log.log(Level.FINE, String.format("Unable to revert instrumented changes in the class '%s'.", className), e);
         }
         return classfileBuffer;
     }

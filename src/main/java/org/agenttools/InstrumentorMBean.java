@@ -27,5 +27,7 @@ public interface InstrumentorMBean
     
     void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException;
 
-    void redefine(String... classNames);
+    void redefine(String... classNames) throws AgentLoadingException;
+    
+    void loadJar(String jarName, byte[] jarBytes) throws AgentLoadingException;
 }

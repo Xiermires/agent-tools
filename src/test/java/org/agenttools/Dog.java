@@ -15,7 +15,7 @@
  *******************************************************************************/
 package org.agenttools;
 
-public class Dog
+class Dog
 {
     void bark()
     {

@@ -40,13 +40,21 @@ public class AgentTools
 {
     static final String REMOTE = "remote";
     static final String LOCAL = "local";
-    
+
     private static Instrumentor theInstrumentor = null;
 
     private AgentTools()
     {
     }
 
+    /**
+     * Loads a transformer that will instrument all loaded classes from now on.
+     * <p>
+     * Previously loaded classes remain unaffected.
+     * 
+     * @param transformer
+     *            a class file transformer
+     */
     public static void load(ClassFileTransformer transformer) throws AgentLoadingException
     {
         if (Objects.isNull(theInstrumentor))
@@ -56,6 +64,14 @@ public class AgentTools
         theInstrumentor.load(transformer);
     }
 
+    /**
+     * Removes a transformer that was instrumenting loaded classes until on.
+     * <p>
+     * Previously loaded classes remain instrumented.
+     * 
+     * @param transformer
+     *            a class file transformer
+     */
     public static void remove(ClassFileTransformer transformer) throws AgentLoadingException
     {
         if (Objects.isNull(theInstrumentor))
@@ -65,6 +81,12 @@ public class AgentTools
         theInstrumentor.remove(transformer);
     }
 
+    /**
+     * Removes any instrumentation from the given classes.
+     * 
+     * @param classNames
+     *            a list of classes that shall remove any instrumented code
+     */
     public static void reset(String... classNames) throws AgentLoadingException
     {
         if (Objects.isNull(theInstrumentor))
@@ -74,6 +96,16 @@ public class AgentTools
         theInstrumentor.reset(classNames);
     }
 
+    /**
+     * Re-transforms classes using the given transformer.
+     * <p>
+     * This action is independent whenever classes have been loaded or not.
+     * 
+     * @param transformer
+     *            a class file transformer
+     * @param classNames
+     *            a list of classes to instrument
+     */
     public static void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException
     {
         if (Objects.isNull(theInstrumentor))
@@ -83,6 +115,14 @@ public class AgentTools
         theInstrumentor.retransform(transformer, classNames);
     }
 
+    /**
+     * Re-defines already loaded classes using the currently loaded transformers.
+     * 
+     * @param transformer
+     *            a class file transformer
+     * @param classNames
+     *            a list of classes to instrument
+     */
     public static void redefine(String... classNames) throws AgentLoadingException
     {
         if (Objects.isNull(theInstrumentor))
@@ -92,7 +132,10 @@ public class AgentTools
         theInstrumentor.redefine(classNames);
     }
 
-    public static <SCFT extends ClassFileTransformer & Serializable> void load(SCFT transformer, int pid) throws AgentLoadingException
+    /**
+     * Remote version of {@link #load(ClassFileTransformer)}
+     */
+    public static <SCFT extends ClassFileTransformer & Serializable> void load(int pid, ClassFileTransformer transformer) throws AgentLoadingException
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
         proxyConn.proxy.load(transformer);
@@ -106,7 +149,10 @@ public class AgentTools
         }
     }
 
-    public static <SCFT extends ClassFileTransformer & Serializable> void remove(SCFT transformer, int pid) throws AgentLoadingException
+    /**
+     * Remote version of {@link #remove(ClassFileTransformer)}
+     */
+    public static <SCFT extends ClassFileTransformer & Serializable> void remove(int pid, SCFT transformer) throws AgentLoadingException
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
         proxyConn.proxy.remove(transformer);
@@ -120,6 +166,9 @@ public class AgentTools
         }
     }
 
+    /**
+     * Remote version of {@link #reset(String...)}
+     */
     public static <SCFT extends ClassFileTransformer & Serializable> void reset(int pid, String... classNames) throws AgentLoadingException
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
@@ -134,6 +183,9 @@ public class AgentTools
         }
     }
 
+    /**
+     * Remote version of {@link #retransform(ClassFileTransformer, String...)}
+     */
     public static <SCFT extends ClassFileTransformer & Serializable> void retransform(int pid, ClassFileTransformer transformer, String... classNames)
             throws AgentLoadingException
     {
@@ -149,11 +201,49 @@ public class AgentTools
         }
     }
 
+    /**
+     * Remote version of {@link #redefine(ClassFileTransformer, String...)}
+     */
     public static <SCFT extends ClassFileTransformer & Serializable> void redefine(int pid, ClassFileTransformer transformer, String... classNames)
             throws AgentLoadingException
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
         proxyConn.proxy.redefine(classNames);
+        try
+        {
+            proxyConn.conn.close();
+        }
+        catch (IOException e)
+        {
+            throw new AgentLoadingException("Unable to close the JMXConnection", e);
+        }
+    }
+
+    /**
+     * Loads a jar file in a remote VM.
+     * <p>
+     * This is required whenever the remote VM hasn't got the ClassFileTransformer or any classes used by this.
+     * <p>
+     * For instance, let's assume we have implemented a Tracer implementation of the ClassFileTransformer using a byte code library, and the remote VM hasn't either the
+     * Tracer nor the byte code library.
+     * <p>
+     * If we try to {@link #load(int, ClassFileTransformer)} it will fail because the remote VM can't load the classes (they don't exist). Hence, they must be loaded
+     * first.
+     * <p>
+     * To create jar files, the {@link ClassTools} class provides a couple of helper methods:
+     * <ul>
+     * <li>{@link ClassTools#createTemporaryJar(String, java.util.jar.Manifest, String...)} creates a jar file including the provided classes.
+     * <li>{@link ClassTools#findJarOf(Class)} finds the jar in which a library class is included.
+     * </ul>
+     * 
+     * @param pid the remote process id
+     * @param jarName an identification name for the generated / loaded jar
+     * @param jarBytes the jar file as a byte array
+     */
+    public static void loadJar(int pid, String jarName, byte[] jarBytes)
+    {
+        final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
+        proxyConn.proxy.loadJar(jarName, jarBytes);
         try
         {
             proxyConn.conn.close();
@@ -177,7 +267,7 @@ public class AgentTools
             vm = VirtualMachine.attach(getPid());
             vm.loadAgent(AgentBootstrap.createBootstrapJar().getAbsolutePath(), LOCAL);
         }
-        catch (AttachNotSupportedException | IOException | AgentLoadException | AgentInitializationException e)
+        catch (AttachNotSupportedException | IOException | AgentLoadException | AgentInitializationException | ClassNotFoundException | URISyntaxException e)
         {
             throw new AgentLoadingException("Unable to start the agent.", e);
         }
