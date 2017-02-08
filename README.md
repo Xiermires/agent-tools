@@ -1,16 +1,11 @@
 #agent-tools
 A collection of tools to allow local & remote loading of agents into the JVM. 
 
-Still in progress :
-
-- Remote version is untested.
-- Tests from client using it as agent-tools.jar.
-
 --------
 Overview
 --------
 
-It provides 10 methods :
+It provides 11 methods :
 
 (local version) -> Works on the local JVM.
 
@@ -22,11 +17,12 @@ It provides 10 methods :
 
 (remote version) -> Same as local, but working on a remote JVM. 
 
-* load (ClassFileTransformer ctf, int pid) -> see above
-* remove (ClassFileTransformer ctf, int pid) -> see above
+* load (int pid, ClassFileTransformer ctf) -> see above
+* remove (int pid, ClassFileTransformer ctf) -> see above
 * reset (int pid, String... classNames) -> see above
 * retransform (int pid, ClassFileTransformer see above
 * redefine(int pid, String... classNames) -> see above
+* loadJar(int pid, String jarName, byte[] jarBytes) -> loads the .jar in the remote VM class path 
 
 ---------
 Specifics 
