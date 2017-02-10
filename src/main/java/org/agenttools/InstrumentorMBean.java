@@ -16,18 +16,15 @@
 package org.agenttools;
 
 import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.Instrumentation;
 
-public interface InstrumentorMBean
+public interface InstrumentorMBean extends Instrumentation
 {
-    void load(ClassFileTransformer transformer) throws AgentLoadingException;
-
-    void remove(ClassFileTransformer transformer) throws AgentLoadingException;
-    
     void reset(String... classNames) throws AgentLoadingException;
     
     void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException;
-
-    void redefine(String... classNames) throws AgentLoadingException;
     
-    void loadJar(String jarName, byte[] jarBytes) throws AgentLoadingException;
+    void appendToSystemClassLoader(String jarName, byte[] jarBytes) throws AgentLoadingException;
+    
+    void appendToBootstrapClassLoader(String jarName, byte[] jarBytes) throws AgentLoadingException;
 }

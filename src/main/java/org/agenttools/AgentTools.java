@@ -17,9 +17,13 @@ package org.agenttools;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.Instrumentation;
+import java.lang.instrument.UnmodifiableClassException;
 import java.lang.management.ManagementFactory;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Objects;
 
 import javax.management.JMX;
@@ -55,13 +59,10 @@ public class AgentTools
      * @param transformer
      *            a class file transformer
      */
-    public static void load(ClassFileTransformer transformer) throws AgentLoadingException
+    public static void add(ClassFileTransformer transformer) throws AgentLoadingException
     {
-        if (Objects.isNull(theInstrumentor))
-        {
-            start();
-        }
-        theInstrumentor.load(transformer);
+        checkStarted();
+        theInstrumentor.addTransformer(transformer);
     }
 
     /**
@@ -74,11 +75,8 @@ public class AgentTools
      */
     public static void remove(ClassFileTransformer transformer) throws AgentLoadingException
     {
-        if (Objects.isNull(theInstrumentor))
-        {
-            start();
-        }
-        theInstrumentor.remove(transformer);
+        checkStarted();
+        theInstrumentor.removeTransformer(transformer);
     }
 
     /**
@@ -89,10 +87,7 @@ public class AgentTools
      */
     public static void reset(String... classNames) throws AgentLoadingException
     {
-        if (Objects.isNull(theInstrumentor))
-        {
-            start();
-        }
+        checkStarted();
         theInstrumentor.reset(classNames);
     }
 
@@ -108,10 +103,7 @@ public class AgentTools
      */
     public static void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException
     {
-        if (Objects.isNull(theInstrumentor))
-        {
-            start();
-        }
+        checkStarted();
         theInstrumentor.retransform(transformer, classNames);
     }
 
@@ -125,20 +117,23 @@ public class AgentTools
      */
     public static void redefine(String... classNames) throws AgentLoadingException
     {
-        if (Objects.isNull(theInstrumentor))
-        {
-            start();
-        }
-        theInstrumentor.redefine(classNames);
+        checkStarted();
+        _redefine(theInstrumentor, classNames);
+    }
+
+    public static long getObjectSize(Object o)
+    {
+        checkStarted();
+        return theInstrumentor.getObjectSize(o);
     }
 
     /**
-     * Remote version of {@link #load(ClassFileTransformer)}
+     * Remote version of {@link #add(ClassFileTransformer)}
      */
-    public static <SCFT extends ClassFileTransformer & Serializable> void load(int pid, ClassFileTransformer transformer) throws AgentLoadingException
+    public static <SCFT extends ClassFileTransformer & Serializable> void add(int pid, ClassFileTransformer transformer) throws AgentLoadingException
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
-        proxyConn.proxy.load(transformer);
+        proxyConn.proxy.addTransformer(transformer);
         try
         {
             proxyConn.conn.close();
@@ -155,7 +150,7 @@ public class AgentTools
     public static <SCFT extends ClassFileTransformer & Serializable> void remove(int pid, SCFT transformer) throws AgentLoadingException
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
-        proxyConn.proxy.remove(transformer);
+        proxyConn.proxy.removeTransformer(transformer);
         try
         {
             proxyConn.conn.close();
@@ -208,7 +203,7 @@ public class AgentTools
             throws AgentLoadingException
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
-        proxyConn.proxy.redefine(classNames);
+        _redefine(proxyConn.proxy, classNames);
         try
         {
             proxyConn.conn.close();
@@ -227,7 +222,7 @@ public class AgentTools
      * For instance, let's assume we have implemented a Tracer implementation of the ClassFileTransformer using a byte code library, and the remote VM hasn't either the
      * Tracer nor the byte code library.
      * <p>
-     * If we try to {@link #load(int, ClassFileTransformer)} it will fail because the remote VM can't load the classes (they don't exist). Hence, they must be loaded
+     * If we try to {@link #add(int, ClassFileTransformer)} it will fail because the remote VM can't load the classes (they don't exist). Hence, they must be loaded
      * first.
      * <p>
      * To create jar files, the {@link ClassTools} class provides a couple of helper methods:
@@ -236,14 +231,17 @@ public class AgentTools
      * <li>{@link ClassTools#findJarOf(Class)} finds the jar in which a library class is included.
      * </ul>
      * 
-     * @param pid the remote process id
-     * @param jarName an identification name for the generated / loaded jar
-     * @param jarBytes the jar file as a byte array
+     * @param pid
+     *            the remote process id
+     * @param jarName
+     *            an identification name for the generated / loaded jar
+     * @param jarBytes
+     *            the jar file as a byte array
      */
     public static void loadJar(int pid, String jarName, byte[] jarBytes)
     {
         final ProxyConnection<InstrumentorMBean> proxyConn = getProxy(pid, InstrumentorMBean.class);
-        proxyConn.proxy.loadJar(jarName, jarBytes);
+        proxyConn.proxy.appendToSystemClassLoader(jarName, jarBytes);
         try
         {
             proxyConn.conn.close();
@@ -257,6 +255,26 @@ public class AgentTools
     static void initialize(Instrumentor instrumentor)
     {
         theInstrumentor = instrumentor;
+    }
+
+    public static void _redefine(Instrumentation theInstrumentor, String... classNames) throws AgentLoadingException
+    {
+        try
+        {
+            theInstrumentor.redefineClasses(ClassTools.getClassDefinition(classNames).toArray(new ClassDefinition[0]));
+        }
+        catch (ClassNotFoundException | URISyntaxException | UnmodifiableClassException | IOException e)
+        {
+            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be redefined { %s }.", Arrays.asList(classNames).toString()), e);
+        }
+    }
+    
+    private static void checkStarted()
+    {
+        if (Objects.isNull(theInstrumentor))
+        {
+            start();
+        }
     }
 
     private static void start() throws AgentLoadingException

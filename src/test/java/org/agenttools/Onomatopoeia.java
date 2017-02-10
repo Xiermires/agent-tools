@@ -58,7 +58,7 @@ class Onomatopoeia implements ClassFileTransformer, Serializable
                 {
                     clazz.defrost();
                 }
-                traceMethods(clazz);
+                makeSound(clazz);
                 return clazz.toBytecode();
             }
             catch (NotFoundException | IOException | CannotCompileException e)
@@ -80,7 +80,7 @@ class Onomatopoeia implements ClassFileTransformer, Serializable
         return classPool.get(className);
     }
 
-    private void traceMethods(CtClass clazz)
+    private void makeSound(CtClass clazz)
     {
         for (CtMethod method : clazz.getDeclaredMethods())
         {

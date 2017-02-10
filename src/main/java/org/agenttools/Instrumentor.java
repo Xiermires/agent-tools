@@ -16,17 +16,17 @@
 package org.agenttools;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
-import java.lang.reflect.Method;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.lang.instrument.UnmodifiableClassException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
 public class Instrumentor implements InstrumentorMBean
@@ -39,15 +39,15 @@ public class Instrumentor implements InstrumentorMBean
     }
 
     @Override
-    public void load(ClassFileTransformer transformer)
+    public void addTransformer(ClassFileTransformer transformer)
     {
         instrumentation.addTransformer(transformer);
     }
 
     @Override
-    public void remove(ClassFileTransformer transformer)
+    public boolean removeTransformer(ClassFileTransformer transformer)
     {
-        instrumentation.removeTransformer(transformer);
+        return instrumentation.removeTransformer(transformer);
     }
 
     @Override
@@ -75,20 +75,102 @@ public class Instrumentor implements InstrumentorMBean
     }
 
     @Override
-    public void redefine(String... classNames)
+    public void redefineClasses(ClassDefinition... definitions) throws ClassNotFoundException, UnmodifiableClassException
     {
-        try
-        {
-            instrumentation.redefineClasses(ClassTools.getClassDefinition(classNames).toArray(new ClassDefinition[0]));
-        }
-        catch (Exception e)
-        {
-            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be redefined { %s }.", Arrays.asList(classNames).toString()), e);
-        }
+        instrumentation.redefineClasses(definitions);
+    }
+    
+    private Predicate<String> in(String[] classNames)
+    {
+        final Set<String> set = Arrays.asList(classNames).stream().map(x -> x.replace('.', '/')).collect(Collectors.toSet());
+        return cn -> set.contains(cn);
     }
 
     @Override
-    public void loadJar(String jarName, byte[] jarBytes)
+    public void addTransformer(ClassFileTransformer transformer, boolean canRetransform)
+    {
+        instrumentation.addTransformer(transformer, canRetransform);
+    }
+
+    @Override
+    public boolean isRetransformClassesSupported()
+    {
+        return instrumentation.isRetransformClassesSupported();
+    }
+
+    @Override
+    public void retransformClasses(Class<?>... classes) throws UnmodifiableClassException
+    {
+        instrumentation.retransformClasses(classes);
+    }
+
+    @Override
+    public boolean isRedefineClassesSupported()
+    {
+        return instrumentation.isRedefineClassesSupported();
+    }
+
+    @Override
+    public boolean isModifiableClass(Class<?> theClass)
+    {
+        return instrumentation.isModifiableClass(theClass);
+    }
+
+    @Override
+    public Class<?>[] getAllLoadedClasses()
+    {
+        return instrumentation.getAllLoadedClasses();
+    }
+
+    @Override
+    public Class<?>[] getInitiatedClasses(ClassLoader loader)
+    {
+        return instrumentation.getInitiatedClasses(loader);
+    }
+
+    @Override
+    public long getObjectSize(Object objectToSize)
+    {
+        return instrumentation.getObjectSize(objectToSize);
+    }
+
+    @Override
+    public void appendToBootstrapClassLoaderSearch(JarFile jarfile)
+    {
+        instrumentation.appendToBootstrapClassLoaderSearch(jarfile);
+    }
+
+    @Override
+    public void appendToSystemClassLoaderSearch(JarFile jarfile)
+    {
+        instrumentation.appendToSystemClassLoaderSearch(jarfile);
+    }
+
+    @Override
+    public boolean isNativeMethodPrefixSupported()
+    {
+        return instrumentation.isNativeMethodPrefixSupported();
+    }
+
+    @Override
+    public void setNativeMethodPrefix(ClassFileTransformer transformer, String prefix)
+    {
+        instrumentation.setNativeMethodPrefix(transformer, prefix);
+    }
+
+    @Override
+    public void appendToSystemClassLoader(String jarName, byte[] jarBytes)
+    {
+        instrumentation.appendToSystemClassLoaderSearch(getJarFile(jarName, jarBytes));
+    }
+
+    @Override
+    public void appendToBootstrapClassLoader(String jarName, byte[] jarBytes)
+    {
+        instrumentation.appendToBootstrapClassLoaderSearch(getJarFile(jarName, jarBytes));
+    }
+    
+    private static JarFile getJarFile(String jarName, byte[] jarBytes)
     {
         if (jarName != null && jarBytes != null)
         {
@@ -97,16 +179,9 @@ public class Instrumentor implements InstrumentorMBean
             {
                 tmp = File.createTempFile(jarName, ".jar");
                 Files.write(Paths.get(tmp.toURI()), jarBytes);
-
-                // hack the SystemClassLoader into an URLClassLoader we can load stuff with.
-                final URL url = tmp.toURI().toURL();
-                final URLClassLoader classLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
-                final Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
-                method.setAccessible(true);
-                method.invoke(classLoader, url);
-                method.setAccessible(false);
+                return new JarFile(tmp);
             }
-            catch (Exception e)
+            catch (IOException e)
             {
                 throw new AgentLoadingException(String.format("Unable to load the provided jar { %s }.", jarName.concat(".jar")), e);
             }
@@ -115,11 +190,6 @@ public class Instrumentor implements InstrumentorMBean
                 tmp.deleteOnExit();
             }
         }
-    }
-
-    private Predicate<String> in(String[] classNames)
-    {
-        final Set<String> set = Arrays.asList(classNames).stream().map(x -> x.replace('.', '/')).collect(Collectors.toSet());
-        return cn -> set.contains(cn);
+        return null;
     }
 }

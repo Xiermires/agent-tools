@@ -41,7 +41,7 @@ public class AgentToolsTest
     public void testAddRemove() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("meow", "org/agenttools/Cat", "org/agenttools/Dog");
-        AgentTools.load(transformer);
+        AgentTools.add(transformer);
 
         final Cat cat = new Cat();
         cat.meow(); // meow
@@ -55,7 +55,7 @@ public class AgentToolsTest
     public void testReset() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("meow", "org/agenttools/Cat");
-        AgentTools.load(transformer);
+        AgentTools.add(transformer);
 
         final Cat cat = new Cat();
         cat.meow(); // meow
@@ -69,7 +69,7 @@ public class AgentToolsTest
     public void testRetransform() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("woof-woof", "org/agenttools/Dog");
-        AgentTools.load(transformer);
+        AgentTools.add(transformer);
 
         final Dog dog = new Dog();
         dog.bark(); // woof-woof
@@ -87,7 +87,7 @@ public class AgentToolsTest
     public void testRedefine() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("meow", "org/agenttools/Cat");
-        AgentTools.load(transformer);
+        AgentTools.add(transformer);
 
         final Cat cat = new Cat();
         cat.meow(); // meow
@@ -95,7 +95,7 @@ public class AgentToolsTest
         AgentTools.remove(transformer);
         cat.meow(); // meow
 
-        AgentTools.load(new Onomatopoeia("marrameu", "org/agenttools/Cat"));
+        AgentTools.add(new Onomatopoeia("marrameu", "org/agenttools/Cat"));
         AgentTools.redefine(Cat.class.getName());
         cat.meow(); // marrameu (Catalan)
     }
