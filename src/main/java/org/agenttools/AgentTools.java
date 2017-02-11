@@ -257,7 +257,7 @@ public class AgentTools
         theInstrumentor = instrumentor;
     }
 
-    public static void _redefine(Instrumentation theInstrumentor, String... classNames) throws AgentLoadingException
+    private static void _redefine(Instrumentation theInstrumentor, String... classNames) throws AgentLoadingException
     {
         try
         {
