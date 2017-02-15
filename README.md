@@ -57,20 +57,20 @@ class Example {
 	{
 		final ClassFileTransformer ctf = new Onomatopoeia("woof-woof", "Dog"); // This transformer changes the Dog class to console out the given onomatopoeia
 		AgentTools.add(ctf);
-		new Dog().bark() // prints woof-woof
+		new Dog().bark(); // prints woof-woof
 		
 		AgentTools.reset("Dog");
-		new Dog().bark() // silence
+		new Dog().bark(); // silence
 		
 		AgentTools.retransform(ctf, "Dog");
-		new Dog().bark() // prints woof-woof
+		new Dog().bark(); // prints woof-woof
 		
 		AgentTools.remove(ctf);
-		new Dog().bark() // still woof-woof
+		new Dog().bark(); // still woof-woof
 		
 		AgentTools.add(new Onomatopoeia("bup-bup", "Dog"));
 		AgentTools.redefine("Dog");
-		new Dog().bark() // prints bup-bup. The dog just learned Catalan !		
+		new Dog().bark(); // prints bup-bup. The dog just learned Catalan !		
 	}
 }
 ```
