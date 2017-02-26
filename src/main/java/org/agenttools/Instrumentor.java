@@ -59,14 +59,15 @@ public class Instrumentor implements InstrumentorMBean
     @Override
     public void retransform(ClassFileTransformer transformer, String... classNames)
     {
-        instrumentation.addTransformer(new FilteredClassFileTransformer(transformer, in(classNames)), true);
+        instrumentation.addTransformer(new FilteredClassFileTransformer(transformer, whileIn(classNames)), true);
         try
         {
             instrumentation.retransformClasses(ClassTools.getClass(classNames).toArray(new Class[0]));
         }
         catch (Exception e)
         {
-            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be transformed { %s }.", Arrays.asList(classNames).toString()), e);
+            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be transformed { %s }.",
+                    Arrays.asList(classNames).toString()), e);
         }
         finally
         {
@@ -79,11 +80,19 @@ public class Instrumentor implements InstrumentorMBean
     {
         instrumentation.redefineClasses(definitions);
     }
-    
-    private Predicate<String> in(String[] classNames)
+
+    private Predicate<String> whileIn(String[] classNames)
     {
         final Set<String> set = Arrays.asList(classNames).stream().map(x -> x.replace('.', '/')).collect(Collectors.toSet());
-        return cn -> set.contains(cn);
+        return cn ->
+        {
+            if (set.contains(cn))
+            {
+                set.remove(cn);
+                return true;
+            }
+            return false;
+        };
     }
 
     @Override
@@ -169,7 +178,7 @@ public class Instrumentor implements InstrumentorMBean
     {
         instrumentation.appendToBootstrapClassLoaderSearch(getJarFile(jarName, jarBytes));
     }
-    
+
     private static JarFile getJarFile(String jarName, byte[] jarBytes)
     {
         if (jarName != null && jarBytes != null)
@@ -183,7 +192,8 @@ public class Instrumentor implements InstrumentorMBean
             }
             catch (IOException e)
             {
-                throw new AgentLoadingException(String.format("Unable to load the provided jar { %s }.", jarName.concat(".jar")), e);
+                throw new AgentLoadingException(String.format("Unable to load the provided jar { %s }.", jarName.concat(".jar")),
+                        e);
             }
             finally
             {
