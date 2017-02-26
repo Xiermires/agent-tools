@@ -24,6 +24,7 @@ import java.lang.instrument.UnmodifiableClassException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.jar.JarFile;
@@ -59,10 +60,21 @@ public class Instrumentor implements InstrumentorMBean
     @Override
     public void retransform(ClassFileTransformer transformer, String... classNames)
     {
-        instrumentation.addTransformer(new FilteredClassFileTransformer(transformer, whileIn(classNames)), true);
+        instrumentation.addTransformer(new FilteredClassFileTransformer(transformer, in(classNames)), true);
         try
         {
-            instrumentation.retransformClasses(ClassTools.getClass(classNames).toArray(new Class[0]));
+            // Load classes which haven't been loaded. That applies the transformation.
+            final Set<String> loaded = loadIfUnloaded(classNames);
+
+            // Re-transform the remaining
+            final Set<String> remaining = new LinkedHashSet<>(Arrays.asList(classNames)).stream()
+                    .filter(f -> !loaded.contains(f)).collect(Collectors.toSet());
+
+            if (!remaining.isEmpty())
+            {
+                instrumentation.retransformClasses(ClassTools.getClass(remaining.toArray(new String[remaining.size()])).toArray(
+                        new Class[0]));
+            }
         }
         catch (Exception e)
         {
@@ -75,24 +87,29 @@ public class Instrumentor implements InstrumentorMBean
         }
     }
 
+    private Set<String> loadIfUnloaded(String[] classNames) throws ClassNotFoundException
+    {
+        final Set<String> allLoadedClasses = Arrays.asList(instrumentation.getAllLoadedClasses()).stream().map(c -> c.getName())
+                .collect(Collectors.toSet());
+
+        final Set<String> notLoaded = new LinkedHashSet<>(Arrays.asList(classNames)).stream()
+                .filter(f -> !allLoadedClasses.contains(f)).collect(Collectors.toSet());
+
+        // load them
+        ClassTools.getClass(notLoaded.toArray(new String[notLoaded.size()]));
+        return notLoaded;
+    }
+
     @Override
     public void redefineClasses(ClassDefinition... definitions) throws ClassNotFoundException, UnmodifiableClassException
     {
         instrumentation.redefineClasses(definitions);
     }
 
-    private Predicate<String> whileIn(String[] classNames)
+    private Predicate<String> in(String[] classNames)
     {
         final Set<String> set = Arrays.asList(classNames).stream().map(x -> x.replace('.', '/')).collect(Collectors.toSet());
-        return cn ->
-        {
-            if (set.contains(cn))
-            {
-                set.remove(cn);
-                return true;
-            }
-            return false;
-        };
+        return cn -> set.contains(cn);
     }
 
     @Override
