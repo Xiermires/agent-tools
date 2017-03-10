@@ -293,11 +293,6 @@ public class AgentTools
 
     private static void startRemote(int pid)
     {
-        if (String.valueOf(pid).equals(getPid())) // local
-        {
-            start();
-        }
-
         VirtualMachine vm;
         try
         {
