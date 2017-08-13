@@ -1,17 +1,23 @@
 /*******************************************************************************
  * Copyright (c) 2017, Xavier Miret Andres <xavier.mires@gmail.com>
  *
- * Permission to use, copy, modify, and/or distribute this software for any 
- * purpose with or without fee is hereby granted, provided that the above 
- * copyright notice and this permission notice appear in all copies.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES 
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALLIMPLIED WARRANTIES OF 
- * MERCHANTABILITY  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR 
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES 
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  *******************************************************************************/
 package org.agenttools;
 
@@ -35,18 +41,18 @@ import com.sun.tools.attach.AttachNotSupportedException;
 
 // The tests work perfectly individually.
 // If run together, keep in mind once cat / dog are loaded they won't be instrumented again unless re-transformed / redefined.
-public class AgentToolsTest
+public class AgentTest
 {
     @Test
     public void testAddRemove() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("meow", "org/agenttools/Cat", "org/agenttools/Dog");
-        AgentTools.add(transformer);
+        Agents.add(transformer);
 
         final Cat cat = new Cat();
         cat.meow(); // meow
 
-        AgentTools.remove(transformer);
+        Agents.remove(transformer);
         final Dog dog = new Dog();
         dog.bark(); // silence
     }
@@ -55,13 +61,13 @@ public class AgentToolsTest
     public void testReset() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("meow", "org/agenttools/Cat");
-        AgentTools.add(transformer);
+        Agents.add(transformer);
 
         final Cat cat = new Cat();
         cat.meow(); // meow
 
-        AgentTools.remove(transformer);
-        AgentTools.reset(Cat.class.getName());
+        Agents.remove(transformer);
+        Agents.reset(Cat.class.getName());
         cat.meow(); // silence
     }
 
@@ -69,17 +75,17 @@ public class AgentToolsTest
     public void testRetransform() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("woof-woof", "org/agenttools/Dog");
-        AgentTools.add(transformer);
+        Agents.add(transformer);
 
         final Dog dog = new Dog();
         dog.bark(); // woof-woof
 
-        AgentTools.remove(transformer);
-        AgentTools.reset(Dog.class.getName());
+        Agents.remove(transformer);
+        Agents.reset(Dog.class.getName());
 
         dog.bark(); // silence
 
-        AgentTools.retransform(new Onomatopoeia("bup bup", "org/agenttools/Dog"), Dog.class.getName());
+        Agents.retransform(new Onomatopoeia("bup bup", "org/agenttools/Dog"), Dog.class.getName());
         dog.bark(); // bup bup (Catalan)
     }
 
@@ -87,16 +93,16 @@ public class AgentToolsTest
     public void testRedefine() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
     {
         final Onomatopoeia transformer = new Onomatopoeia("meow", "org/agenttools/Cat");
-        AgentTools.add(transformer);
+        Agents.add(transformer);
 
         final Cat cat = new Cat();
         cat.meow(); // meow
 
-        AgentTools.remove(transformer);
+        Agents.remove(transformer);
         cat.meow(); // meow
 
-        AgentTools.add(new Onomatopoeia("marrameu", "org/agenttools/Cat"));
-        AgentTools.redefine(Cat.class.getName());
+        Agents.add(new Onomatopoeia("marrameu", "org/agenttools/Cat"));
+        Agents.redefine(Cat.class.getName());
         cat.meow(); // marrameu (Catalan)
     }
 
@@ -133,7 +139,7 @@ public class AgentToolsTest
         jarFile.deleteOnExit();
 
         final byte[] jarBytes = Files.readAllBytes(Paths.get(jarFile.toURI()));
-        AgentTools.loadJar(pid, "loadJarTest", jarBytes); // class loaded every second
+        Agents.loadJar(pid, "loadJarTest", jarBytes); // class loaded every second
     }
 
     @Test
@@ -149,16 +155,16 @@ public class AgentToolsTest
 
         ctf.deleteOnExit();
 
-        AgentTools.loadJar(pid, "ctfDependency", Files.readAllBytes(Paths.get(ctf.toURI())));
-        AgentTools.loadJar(pid, "jna-4.0.0", Files.readAllBytes(Paths.get(jnaPlatform.toURI())));
-        AgentTools.loadJar(pid, "javassist-3.18.1-GA", Files.readAllBytes(Paths.get(javassist.toURI())));
+        Agents.loadJar(pid, "ctfDependency", Files.readAllBytes(Paths.get(ctf.toURI())));
+        Agents.loadJar(pid, "jna-4.0.0", Files.readAllBytes(Paths.get(jnaPlatform.toURI())));
+        Agents.loadJar(pid, "javassist-3.18.1-GA", Files.readAllBytes(Paths.get(javassist.toURI())));
 
         final Onomatopoeia meow = new Onomatopoeia("meow", "org/testremote/Cat");
         final Onomatopoeia woof = new Onomatopoeia("woof-woof", "org/testremote/Dog");
 
-        AgentTools.retransform(pid, woof, "org.testremote.Dog"); // woof-woof every second
-        AgentTools.remove(pid, woof);
-        AgentTools.reset(pid, "org.testremote.Dog"); // no more woofs
-        AgentTools.retransform(pid, meow, "org.testremote.Cat"); // meow every second
+        Agents.retransform(pid, woof, "org.testremote.Dog"); // woof-woof every second
+        Agents.remove(pid, woof);
+        Agents.reset(pid, "org.testremote.Dog"); // no more woofs
+        Agents.retransform(pid, meow, "org.testremote.Cat"); // meow every second
     }
 }

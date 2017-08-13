@@ -1,17 +1,23 @@
 /*******************************************************************************
  * Copyright (c) 2017, Xavier Miret Andres <xavier.mires@gmail.com>
  *
- * Permission to use, copy, modify, and/or distribute this software for any 
- * purpose with or without fee is hereby granted, provided that the above 
- * copyright notice and this permission notice appear in all copies.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES 
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALLIMPLIED WARRANTIES OF 
- * MERCHANTABILITY  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR 
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES 
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  *******************************************************************************/
 package org.agenttools;
 
@@ -58,7 +64,7 @@ public class Instrumentor implements InstrumentorMBean
     }
 
     @Override
-    public void retransform(ClassFileTransformer transformer, String... classNames)
+    public void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException
     {
         instrumentation.addTransformer(new FilteredClassFileTransformer(transformer, in(classNames)), true);
         try
@@ -92,12 +98,28 @@ public class Instrumentor implements InstrumentorMBean
         final Set<String> allLoadedClasses = Arrays.asList(instrumentation.getAllLoadedClasses()).stream().map(c -> c.getName())
                 .collect(Collectors.toSet());
 
-        final Set<String> notLoaded = new LinkedHashSet<>(Arrays.asList(classNames)).stream()
-                .filter(f -> !allLoadedClasses.contains(f)).collect(Collectors.toSet());
+        final Set<String> notLoaded = new LinkedHashSet<>(Arrays.asList(classNames)).stream().filter(
+                f -> !allLoadedClasses.contains(f)).collect(Collectors.toSet());
 
         // load them
         ClassTools.getClass(notLoaded.toArray(new String[notLoaded.size()]));
         return notLoaded;
+    }
+
+    @Override
+    public void redefine(String... classNames) throws AgentLoadingException
+    {
+        try
+        {
+            final ClassDefinition[] defs = ClassTools.getClassDefinition(classNames).toArray(
+                    new ClassDefinition[classNames.length]);
+            redefineClasses(defs);
+        }
+        catch (Exception e)
+        {
+            throw new AgentLoadingException(String.format("All or some of the following classes couldn't be redefined { %s }.",
+                    Arrays.asList(classNames).toString()), e);
+        }
     }
 
     @Override
