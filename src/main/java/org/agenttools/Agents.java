@@ -29,10 +29,9 @@ import java.lang.instrument.ClassFileTransformer;
 
 import org.agenttools.AgentBootstrap.ProxyConnection;
 
-public class Agents
-{
-    private Agents()
-    {
+public class Agents {
+
+    private Agents() {
     }
 
     /**
@@ -43,9 +42,8 @@ public class Agents
      * @param transformer
      *            a class file transformer
      */
-    public static void add(ClassFileTransformer transformer) throws AgentLoadingException
-    {
-        getInstrumentor().addTransformer(transformer);
+    public static void add(ClassFileTransformer transformer) throws AgentLoadingException {
+	getInstrumentor().addTransformer(transformer);
     }
 
     /**
@@ -56,9 +54,8 @@ public class Agents
      * @param transformer
      *            a class file transformer
      */
-    public static void remove(ClassFileTransformer transformer) throws AgentLoadingException
-    {
-        getInstrumentor().removeTransformer(transformer);
+    public static void remove(ClassFileTransformer transformer) throws AgentLoadingException {
+	getInstrumentor().removeTransformer(transformer);
     }
 
     /**
@@ -67,9 +64,8 @@ public class Agents
      * @param classNames
      *            a list of classes that shall remove any instrumented code
      */
-    public static void reset(String... classNames) throws AgentLoadingException
-    {
-        getInstrumentor().reset(classNames);
+    public static void reset(String... classNames) throws AgentLoadingException {
+	getInstrumentor().reset(classNames);
     }
 
     /**
@@ -82,106 +78,90 @@ public class Agents
      * @param classNames
      *            a list of classes to instrument
      */
-    public static void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException
-    {
-        getInstrumentor().retransform(transformer, classNames);
+    public static void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException {
+	getInstrumentor().retransform(transformer, classNames);
     }
 
     /**
-     * Re-defines already loaded classes using the currently loaded transformers.
+     * Re-defines already loaded classes using the provided bytes.
      * 
-     * @param transformer
-     *            a class file transformer
-     * @param classNames
-     *            a list of classes to instrument
+     * @param className
+     *            a class to instrument
+     * @param bytes
+     *            the .class file as bytes
      */
-    public static void redefine(String... classNames) throws AgentLoadingException
-    {
-        getInstrumentor().redefine(classNames);
+    public static void redefine(String className, byte[] bytes) throws AgentLoadingException {
+	getInstrumentor().redefine(className, bytes);
     }
 
-    public static long getObjectSize(Object o)
-    {
-        return getInstrumentor().getObjectSize(o);
+    public static long getObjectSize(Object o) {
+	return getInstrumentor().getObjectSize(o);
     }
 
     /**
      * Remote version of {@link #add(ClassFileTransformer)}
      */
-    public static <SCFT extends ClassFileTransformer & Serializable> void add(int pid, ClassFileTransformer transformer)
-            throws AgentLoadingException
-    {
-        try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid))
-        {
-            proxyConn.proxy.addTransformer(transformer);
-        }
+    public static <SCFT extends ClassFileTransformer & Serializable> void add(int pid, SCFT transformer)
+	    throws AgentLoadingException {
+	try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid)) {
+	    proxyConn.proxy.addTransformer(transformer);
+	}
     }
 
     /**
      * Remote version of {@link #remove(ClassFileTransformer)}
      */
     public static <SCFT extends ClassFileTransformer & Serializable> void remove(int pid, SCFT transformer)
-            throws AgentLoadingException
-    {
-        try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid))
-        {
-            proxyConn.proxy.removeTransformer(transformer);
-        }
+	    throws AgentLoadingException {
+	try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid)) {
+	    proxyConn.proxy.removeTransformer(transformer);
+	}
     }
 
     /**
      * Remote version of {@link #reset(String...)}
      */
-    public static <SCFT extends ClassFileTransformer & Serializable> void reset(int pid, String... classNames)
-            throws AgentLoadingException
-    {
-        try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid))
-        {
-            proxyConn.proxy.reset(classNames);
-        }
+    public static void reset(int pid, String... classNames) throws AgentLoadingException {
+	try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid)) {
+	    proxyConn.proxy.reset(classNames);
+	}
     }
 
     /**
      * Remote version of {@link #retransform(ClassFileTransformer, String...)}
      */
-    public static <SCFT extends ClassFileTransformer & Serializable> void retransform(int pid, ClassFileTransformer transformer,
-            String... classNames) throws AgentLoadingException
-    {
-        try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid))
-        {
-            proxyConn.proxy.retransform(transformer, classNames);
-        }
+    public static <SCFT extends ClassFileTransformer & Serializable> void retransform(int pid, SCFT transformer,
+	    String... classNames) throws AgentLoadingException {
+	try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid)) {
+	    proxyConn.proxy.retransform(transformer, classNames);
+	}
     }
 
     /**
      * Remote version of {@link #redefine(ClassFileTransformer, String...)}
      */
-    public static <SCFT extends ClassFileTransformer & Serializable> void redefine(int pid, ClassFileTransformer transformer,
-            String... classNames) throws AgentLoadingException
-    {
-        try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid))
-        {
-            proxyConn.proxy.redefine(classNames);
-        }
+    public static <SCFT extends ClassFileTransformer & Serializable> void redefine(int pid, SCFT transformer,
+	    String className, byte[] bytes) throws AgentLoadingException {
+	try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid)) {
+	    proxyConn.proxy.redefine(className, bytes);
+	}
     }
 
     /**
      * Loads a jar file in a remote VM.
      * <p>
-     * This is required whenever the remote VM hasn't got the ClassFileTransformer or any classes
-     * used by this.
+     * This is required whenever the remote VM hasn't got the ClassFileTransformer or any classes used by this.
      * <p>
-     * For instance, let's assume we have implemented a Tracer implementation of the
-     * ClassFileTransformer using a byte code library, and the remote VM hasn't either the Tracer
-     * nor the byte code library.
+     * For instance, let's assume we have implemented a Tracer implementation of the ClassFileTransformer using a byte
+     * code library, and the remote VM hasn't either the Tracer nor the byte code library.
      * <p>
-     * If we try to {@link #add(int, ClassFileTransformer)} it will fail because the remote VM can't
-     * load the classes (they don't exist). Hence, they must be loaded first.
+     * If we try to {@link #add(int, ClassFileTransformer)} it will fail because the remote VM can't load the classes
+     * (they don't exist). Hence, they must be loaded first.
      * <p>
      * To create jar files, the {@link ClassTools} class provides a couple of helper methods:
      * <ul>
-     * <li>{@link ClassTools#createTemporaryJar(String, java.util.jar.Manifest, String...)} creates
-     * a jar file including the provided classes.
+     * <li>{@link ClassTools#createTemporaryJar(String, java.util.jar.Manifest, String...)} creates a jar file including
+     * the provided classes.
      * <li>{@link ClassTools#findJarOf(Class)} finds the jar in which a library class is included.
      * </ul>
      * 
@@ -192,12 +172,9 @@ public class Agents
      * @param jarBytes
      *            the jar file as a byte array
      */
-    public static void loadJar(int pid, String jarName, byte[] jarBytes)
-    {
-        try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid))
-        {
-            proxyConn.proxy.appendToSystemClassLoader(jarName, jarBytes);
-        }
+    public static void loadJar(int pid, String jarName, byte[] jarBytes) {
+	try (ProxyConnection<InstrumentorMBean> proxyConn = getInstrumentorProxy(pid)) {
+	    proxyConn.proxy.appendToSystemClassLoader(jarName, jarBytes);
+	}
     }
-
 }

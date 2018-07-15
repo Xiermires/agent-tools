@@ -30,7 +30,7 @@ public interface InstrumentorMBean extends Instrumentation
     
     void retransform(ClassFileTransformer transformer, String... classNames) throws AgentLoadingException;
     
-    void redefine(String... classNames) throws AgentLoadingException;
+    void redefine(String className, byte[] bytes) throws AgentLoadingException;
     
     void appendToSystemClassLoader(String jarName, byte[] jarBytes) throws AgentLoadingException;
     

@@ -23,6 +23,7 @@ package org.agenttools;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.instrument.IllegalClassFormatException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -90,7 +91,7 @@ public class AgentTest
     }
 
     @Test
-    public void testRedefine() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException
+    public void testRedefine() throws AttachNotSupportedException, IOException, AgentLoadException, AgentInitializationException, InterruptedException, AgentLoadingException, URISyntaxException, IllegalClassFormatException
     {
         final Onomatopoeia transformer = new Onomatopoeia("meow", "org/agenttools/Cat");
         Agents.add(transformer);
@@ -101,8 +102,10 @@ public class AgentTest
         Agents.remove(transformer);
         cat.meow(); // meow
 
-        Agents.add(new Onomatopoeia("marrameu", "org/agenttools/Cat"));
-        Agents.redefine(Cat.class.getName());
+        final String className = Cat.class.getName();
+        final byte[] catalanCat = new Onomatopoeia("marrameu", className).transform(getClass().getClassLoader(), className, Cat.class, null, ClassTools.getClassBytes(className));
+        
+	Agents.redefine(className, catalanCat);	
         cat.meow(); // marrameu (Catalan)
     }
 
